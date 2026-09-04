@@ -1,0 +1,89 @@
+model CustomerAccount {
+  id    String  @id @default(uuid())
+  phone String? @unique
+  email String? @unique
+  name  String
+
+  organizationCustomers OrganizationCustomer[]
+  slotHolds             SlotHold[]
+  bookings              Booking[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("customer_accounts")
+}
+
+model OrganizationCustomer {
+  id                String    @id @default(uuid())
+  organizationId    String
+  customerAccountId String
+  totalBookings     Int       @default(0)
+  totalSpend        Float     @default(0)
+  lastBookingAt     DateTime?
+
+  organization    Organization    @relation(fields: [organizationId], references: [id])
+  customerAccount CustomerAccount @relation(fields: [customerAccountId], references: [id])
+  bookings        Booking[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, customerAccountId])
+  @@map("organization_customers")
+}
+
+model User {
+  id                   String    @id @default(uuid())
+  organizationId       String
+  email                String    @unique
+  password             String
+  role                 String    @default("ADMIN")
+  isActive             Boolean   @default(true)
+  resetPasswordToken   String?
+  resetPasswordExpires DateTime?
+
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  staffProfile StaffProfile?
+
+  createdBookings  Booking[]  @relation("UserBookings")
+  createdSlotHolds SlotHold[] @relation("UserSlotHolds")
+  auditLogs        AuditLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+model StaffProfile {
+  id             String @id @default(uuid())
+  userId         String @unique
+  organizationId String
+  permissions    String
+
+  user         User         @relation(fields: [userId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("staff_profiles")
+}
+
+model AuditLog {
+  id             String @id @default(uuid())
+  organizationId String
+  actorUserId    String
+  action         String
+  entityType     String
+  entityId       String
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  actor        User         @relation(fields: [actorUserId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("audit_logs")
+}

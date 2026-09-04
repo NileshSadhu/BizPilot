@@ -1,0 +1,74 @@
+model SlotHold {
+  id                 String   @id @default(uuid())
+  organizationId     String
+  resourceId         String
+  customerAccountId  String
+  createdByUserId    String
+  startAt            DateTime
+  endAt              DateTime
+  status             String
+  expiresAt          DateTime
+  convertedBookingId String?  @unique
+
+  organization      Organization    @relation(fields: [organizationId], references: [id])
+  resource          Resource        @relation(fields: [resourceId], references: [id])
+  customerAccount   CustomerAccount @relation(fields: [customerAccountId], references: [id])
+  createdByUser     User            @relation("UserSlotHolds", fields: [createdByUserId], references: [id])
+  
+  convertedBooking  Booking?        @relation(fields: [convertedBookingId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("slot_holds")
+}
+
+model Booking {
+  id                     String   @id @default(uuid())
+  organizationId         String
+  locationId             String
+  activityTypeId         String
+  resourceId             String
+  customerAccountId      String
+  organizationCustomerId String
+  createdByUserId        String
+  startAt                DateTime
+  endAt                  DateTime
+  status                 String
+  source                 String
+  amount                 Float
+
+  organization         Organization         @relation(fields: [organizationId], references: [id])
+  location             Location             @relation(fields: [locationId], references: [id])
+  activityType         ActivityType         @relation(fields: [activityTypeId], references: [id])
+  resource             Resource             @relation(fields: [resourceId], references: [id])
+  customerAccount      CustomerAccount      @relation(fields: [customerAccountId], references: [id])
+  organizationCustomer OrganizationCustomer @relation(fields: [organizationCustomerId], references: [id])
+  createdByUser        User                 @relation("UserBookings", fields: [createdByUserId], references: [id])
+
+  slotHold SlotHold?
+  payments Payment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("bookings")
+}
+
+model Payment {
+  id                String @id @default(uuid())
+  organizationId    String
+  bookingId         String
+  amount            Float
+  method            String
+  status            String
+  providerPaymentId String
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  booking      Booking      @relation(fields: [bookingId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("payments")
+}

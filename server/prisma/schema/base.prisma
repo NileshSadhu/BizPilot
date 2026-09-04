@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id               String @id @default(uuid())
+  name             String
+  slug             String @unique
+  status           String
+  subscriptionPlan String
+  timezone         String
+  currency         String
+
+  locations             Location[]
+  resources             Resource[]
+  users                 User[]
+  organizationCustomers OrganizationCustomer[]
+  slotHolds             SlotHold[]
+  bookings              Booking[]
+  payments              Payment[]
+  pricingRules          PricingRule[]
+  auditLogs             AuditLog[]
+  staffProfiles         StaffProfile[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("organizations")
+}
+
+model Sport {
+  id   String @id @default(uuid())
+  name String
+  slug String @unique
+
+  activityTypes ActivityType[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("sports")
+}
+
+model ActivityType {
+  id      String @id @default(uuid())
+  sportId String
+  name    String
+  slug    String
+
+  sport     Sport      @relation(fields: [sportId], references: [id])
+  resources Resource[]
+  bookings  Booking[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("activity_types")
+}

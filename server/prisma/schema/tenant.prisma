@@ -1,0 +1,88 @@
+model Location {
+  id             String @id @default(uuid())
+  organizationId String
+  name           String
+  city           String
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  resources    Resource[]
+  bookings     Booking[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("locations")
+}
+
+model Resource {
+  id             String @id @default(uuid())
+  organizationId String
+  locationId     String
+  activityTypeId String
+  name           String
+  status         String
+
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  location       Location     @relation(fields: [locationId], references: [id])
+  activityType   ActivityType @relation(fields: [activityTypeId], references: [id])
+  
+  availabilityRules      AvailabilityRule[]
+  availabilityExceptions AvailabilityException[]
+  pricingRules           PricingRule[]
+  slotHolds              SlotHold[]
+  bookings               Booking[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("resources")
+}
+
+model AvailabilityRule {
+  id                  String   @id @default(uuid())
+  resourceId          String
+  dayOfWeek           String
+  openTime            DateTime @db.Time
+  closeTime           DateTime @db.Time
+  slotDurationMinutes Int
+
+  resource Resource @relation(fields: [resourceId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("availability_rules")
+}
+
+model AvailabilityException {
+  id         String   @id @default(uuid())
+  resourceId String
+  date       DateTime @db.Date
+  type       String
+  reason     String?
+
+  resource Resource @relation(fields: [resourceId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("availability_exceptions")
+}
+
+model PricingRule {
+  id             String   @id @default(uuid())
+  organizationId String
+  resourceId     String
+  dayType        String
+  startTime      DateTime @db.Time
+  endTime        DateTime @db.Time
+  pricePerSlot   Float
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  resource     Resource     @relation(fields: [resourceId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("pricing_rules")
+}
