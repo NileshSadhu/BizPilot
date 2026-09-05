@@ -105,29 +105,31 @@ export const forgotPassword = asyncHandler(async (req: Request, res: Response, n
 });
 
 export const changePassword = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
-  const { token, newPassword } = req.body as z.infer<typeof changePasswordSchema>['body'];
-  const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+  const { oldPassword, newPassword } = req.body as z.infer<typeof changePasswordSchema>['body'];
 
-  const user = await prisma.user.findFirst({
-    where: {
-      resetPasswordToken: hashedToken,
-      resetPasswordExpires: { gt: new Date() }
-    }
-  });
-
+  // req.user is set by the protect middleware from the bearer token
+  const user = await prisma.user.findUnique({ where: { id: req.user.id } });
   if (!user) {
-    return next(new ApiError(400, 'Token is invalid or has expired'));
+    return next(new ApiError(404, 'User not found'));
+  }
+
+  // Verify old password
+  const isMatch = await bcrypt.compare(oldPassword, user.password);
+  if (!isMatch) {
+    return next(new ApiError(401, 'Old password is incorrect'));
+  }
+
+  // Prevent reuse of the same password
+  const isSame = await bcrypt.compare(newPassword, user.password);
+  if (isSame) {
+    return next(new ApiError(400, 'New password must be different from the old password'));
   }
 
   const hashedPassword = await bcrypt.hash(newPassword, 12);
 
   await prisma.user.update({
     where: { id: user.id },
-    data: {
-      password: hashedPassword,
-      resetPasswordToken: null,
-      resetPasswordExpires: null
-    }
+    data: { password: hashedPassword }
   });
 
   res.status(200).json(new ApiResponse(200, null, 'Password updated successfully'));

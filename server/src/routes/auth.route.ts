@@ -9,6 +9,6 @@ export const authRoute = Router();
 authRoute.post('/register', validate(registerSchema), register);
 authRoute.post('/login', validate(loginSchema), login);
 authRoute.post('/forgot-password', validate(forgotPasswordSchema), forgotPassword);
-authRoute.post('/change-password', validate(changePasswordSchema), changePassword);
+authRoute.post('/change-password', protect, validate(changePasswordSchema), changePassword);
 authRoute.post('/logout', protect, logout);
 authRoute.get('/me', protect, getMe);
