@@ -60,5 +60,6 @@ model ActivityType {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([sportId, slug])
   @@map("activity_types")
 }

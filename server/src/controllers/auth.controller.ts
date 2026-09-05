@@ -19,7 +19,7 @@ const generateToken = (id: string) => {
 };
 
 export const register = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
-  const { email, password, organizationId, organizationName } = req.body as z.infer<typeof registerSchema>['body'];
+  const { email, password, organizationName } = req.body as z.infer<typeof registerSchema>['body'];
 
   const existingUser = await prisma.user.findUnique({ where: { email } });
   if (existingUser) {
@@ -27,28 +27,24 @@ export const register = asyncHandler(async (req: Request, res: Response, next: N
   }
 
   const hashedPassword = await bcrypt.hash(password, 12);
-  let orgId = organizationId;
 
-  if (!orgId) {
-    const org = await prisma.organization.create({
-      data: {
-        name: organizationName || 'Default Org',
-        slug: (organizationName || 'default-org').toLowerCase().replace(/ /g, '-') + '-' + crypto.randomBytes(4).toString('hex'),
-        status: 'ACTIVE',
-        subscriptionPlan: 'FREE',
-        timezone: 'UTC',
-        currency: 'USD'
-      }
-    });
-    orgId = org.id;
-  }
+  const org = await prisma.organization.create({
+    data: {
+      name: organizationName,
+      slug: organizationName.toLowerCase().replace(/ /g, '-') + '-' + crypto.randomBytes(4).toString('hex'),
+      status: 'ACTIVE',
+      subscriptionPlan: 'FREE',
+      timezone: 'UTC',
+      currency: 'USD'
+    }
+  });
 
   const user = await prisma.user.create({
     data: {
       email,
       password: hashedPassword,
-      organizationId: orgId,
-      role: 'ADMIN'
+      organizationId: org.id,
+      role: 'OWNER'
     }
   });
 
