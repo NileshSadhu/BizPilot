@@ -47,3 +47,9 @@ export const changePasswordSchema = z.object({
       .regex(/[^A-Za-z0-9]/, "New password must contain at least one special character"),
   })
 });
+
+export const resendVerificationEmailSchema = z.object({
+  body: z.object({
+    email: z.string().email("Invalid email address"),
+  })
+});

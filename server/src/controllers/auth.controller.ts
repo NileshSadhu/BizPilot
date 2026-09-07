@@ -5,10 +5,10 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { ApiError } from '../utils/ApiError.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
-import { sendPasswordResetEmail } from '../utils/mailer.js';
+import { sendPasswordResetEmail, sendVerificationEmail } from '../utils/mailer.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { z } from 'zod';
-import { registerSchema, loginSchema, forgotPasswordSchema, changePasswordSchema } from '../validations/auth.validation.js';
+import { registerSchema, loginSchema, forgotPasswordSchema, changePasswordSchema, resendVerificationEmailSchema } from '../validations/auth.validation.js';
 
 const prisma = new PrismaClient();
 
@@ -39,19 +39,30 @@ export const register = asyncHandler(async (req: Request, res: Response, next: N
     }
   });
 
+  const rawVerificationToken = crypto.randomBytes(32).toString('hex');
+  const emailVerificationToken = crypto.createHash('sha256').update(rawVerificationToken).digest('hex');
+  const emailVerificationExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
   const user = await prisma.user.create({
     data: {
       email,
       password: hashedPassword,
       organizationId: org.id,
-      role: 'OWNER'
+      role: 'OWNER',
+      emailVerificationToken,
+      emailVerificationExpires,
     }
   });
 
   const token = generateToken(user.id);
   const { password: _, ...userWithoutPassword } = user;
 
-  res.status(201).json(new ApiResponse(201, { user: userWithoutPassword, token }, 'Registration successful'));
+  // Send verification email — non-blocking; failure should not prevent registration
+  sendVerificationEmail(user.email, rawVerificationToken).catch((err) =>
+    console.error('Failed to send verification email:', err)
+  );
+
+  res.status(201).json(new ApiResponse(201, { user: userWithoutPassword, token }, 'Registration successful. Please verify your email.'));
 });
 
 export const login = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
@@ -103,19 +114,16 @@ export const forgotPassword = asyncHandler(async (req: Request, res: Response, n
 export const changePassword = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
   const { oldPassword, newPassword } = req.body as z.infer<typeof changePasswordSchema>['body'];
 
-  // req.user is set by the protect middleware from the bearer token
   const user = await prisma.user.findUnique({ where: { id: req.user.id } });
   if (!user) {
     return next(new ApiError(404, 'User not found'));
   }
 
-  // Verify old password
   const isMatch = await bcrypt.compare(oldPassword, user.password);
   if (!isMatch) {
     return next(new ApiError(401, 'Old password is incorrect'));
   }
 
-  // Prevent reuse of the same password
   const isSame = await bcrypt.compare(newPassword, user.password);
   if (isSame) {
     return next(new ApiError(400, 'New password must be different from the old password'));
@@ -138,4 +146,73 @@ export const getMe = asyncHandler(async (req: Request, res: Response, next: Next
 
 export const logout = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
   res.status(200).json(new ApiResponse(200, null, 'Logged out successfully'));
+});
+
+export const verifyEmail = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+  const { token } = req.query as { token: string };
+
+  if (!token) {
+    return next(new ApiError(400, 'Verification token is required'));
+  }
+
+  const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+  const user = await prisma.user.findFirst({
+    where: {
+      emailVerificationToken: hashedToken,
+      emailVerificationExpires: { gt: new Date() },
+    }
+  });
+
+  if (!user) {
+    return next(new ApiError(400, 'Invalid or expired verification token'));
+  }
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      emailVerified: true,
+      emailVerificationToken: null,
+      emailVerificationExpires: null,
+    }
+  });
+
+  res.status(200).json(new ApiResponse(200, null, 'Email verified successfully'));
+});
+
+export const resendVerificationEmail = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+  const { email } = req.body as z.infer<typeof resendVerificationEmailSchema>['body'];
+
+  const user = await prisma.user.findUnique({ where: { email } });
+
+  if (!user) {
+    return next(new ApiError(404, 'No account found with that email address'));
+  }
+
+  if (user.emailVerified) {
+    return res.status(200).json(new ApiResponse(200, null, 'This email address is already verified'));
+  }
+
+  const rawVerificationToken = crypto.randomBytes(32).toString('hex');
+  const emailVerificationToken = crypto.createHash('sha256').update(rawVerificationToken).digest('hex');
+  const emailVerificationExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+  await prisma.user.update({
+    where: { email },
+    data: { emailVerificationToken, emailVerificationExpires }
+  });
+
+  try {
+    const success = await sendVerificationEmail(user.email, rawVerificationToken);
+    if (!success) {
+      throw new Error('Email sending failed');
+    }
+    res.status(200).json(new ApiResponse(200, null, 'Verification email sent successfully'));
+  } catch (err) {
+    await prisma.user.update({
+      where: { email },
+      data: { emailVerificationToken: null, emailVerificationExpires: null }
+    });
+    return next(new ApiError(500, 'There was an error sending the email. Try again later.'));
+  }
 });

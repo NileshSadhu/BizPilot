@@ -34,14 +34,17 @@ model OrganizationCustomer {
 }
 
 model User {
-  id                   String    @id @default(uuid())
-  organizationId       String
-  email                String    @unique
-  password             String
-  role                 String    @default("ADMIN")
-  isActive             Boolean   @default(true)
-  resetPasswordToken   String?
-  resetPasswordExpires DateTime?
+  id                       String    @id @default(uuid())
+  organizationId           String
+  email                    String    @unique
+  password                 String
+  role                     String    @default("OWNER")
+  isActive                 Boolean   @default(true)
+  emailVerified            Boolean   @default(false)
+  emailVerificationToken   String?
+  emailVerificationExpires DateTime?
+  resetPasswordToken       String?
+  resetPasswordExpires     DateTime?
 
   organization Organization  @relation(fields: [organizationId], references: [id])
   staffProfile StaffProfile?

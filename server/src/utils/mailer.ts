@@ -44,3 +44,34 @@ export const sendPasswordResetEmail = async (email: string, resetToken: string) 
     return false;
   }
 };
+
+export const sendVerificationEmail = async (email: string, rawToken: string) => {
+  const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+  const verifyLink = `${clientUrl}/verify-email?token=${rawToken}`;
+
+  const mailOptions = {
+    from: '"CRM Platform" <noreply@crmplatform.com>',
+    to: email,
+    subject: 'Verify Your Email Address',
+    html: `
+      <h2>Email Verification</h2>
+      <p>Thank you for registering! Please click the link below to verify your email address:</p>
+      <a href="${verifyLink}" target="_blank" style="display:inline-block;padding:10px 20px;color:white;background-color:#007BFF;text-decoration:none;border-radius:5px;">Verify Email</a>
+      <p>If you did not create an account, please ignore this email.</p>
+      <p>This link will expire in 15 minutes.</p>
+    `,
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`Verification email sent: ${info.messageId}`);
+
+    if (!process.env.SMTP_HOST) {
+      console.log(`Preview URL: ${nodemailer.getTestMessageUrl(info)}`);
+    }
+    return true;
+  } catch (error) {
+    console.error('Error sending verification email:', error);
+    return false;
+  }
+};
