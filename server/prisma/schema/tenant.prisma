@@ -1,16 +1,27 @@
 model Location {
   id             String @id @default(uuid())
   organizationId String
-  name           String
-  city           String
+
+  name String
+
+  address    String
+  city       String
+  state      String?
+  postalCode String?
+  country    String  @default("India")
+
+  latitude  Decimal?
+  longitude Decimal?
 
   organization Organization @relation(fields: [organizationId], references: [id])
-  resources    Resource[]
-  bookings     Booking[]
+
+  resources Resource[]
+  bookings  Booking[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([organizationId])
   @@map("locations")
 }
 
@@ -22,10 +33,10 @@ model Resource {
   name           String
   status         String
 
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  location       Location     @relation(fields: [locationId], references: [id])
-  activityType   ActivityType @relation(fields: [activityTypeId], references: [id])
-  
+  organization Organization @relation(fields: [organizationId], references: [id])
+  location     Location     @relation(fields: [locationId], references: [id])
+  activityType ActivityType @relation(fields: [activityTypeId], references: [id])
+
   availabilityRules      AvailabilityRule[]
   availabilityExceptions AvailabilityException[]
   pricingRules           PricingRule[]
