@@ -25,7 +25,7 @@ export const createSport = asyncHandler(async (req: Request, res: Response, next
 
 export const getSports = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
   const isPlatformAdmin = req.user?.role === 'PLATFORM_ADMIN';
-  
+
   const where = isPlatformAdmin ? {} : { isActive: true };
 
   const sports = await prisma.sport.findMany({ where });
