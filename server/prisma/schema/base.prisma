@@ -35,9 +35,11 @@ model Organization {
 }
 
 model Sport {
-  id   String @id @default(uuid())
-  name String
-  slug String @unique
+  id          String  @id @default(uuid())
+  name        String
+  slug        String  @unique
+  description String?
+  isActive    Boolean @default(true)
 
   activityTypes ActivityType[]
 

@@ -12,8 +12,8 @@ import { registerSchema, loginSchema, forgotPasswordSchema, changePasswordSchema
 
 const prisma = new PrismaClient();
 
-const generateToken = (id: string) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET || 'fallback_secret', {
+const generateToken = (id: string, role: string, organizationId?: string | null) => {
+  return jwt.sign({ userId: id, role, organizationId }, process.env.JWT_SECRET || 'fallback_secret', {
     expiresIn: (process.env.JWT_EXPIRES_IN || '1d') as any
   });
 };
@@ -54,7 +54,7 @@ export const register = asyncHandler(async (req: Request, res: Response, next: N
     }
   });
 
-  const token = generateToken(user.id);
+  const token = generateToken(user.id, user.role, user.organizationId);
   const { password: _, ...userWithoutPassword } = user;
 
   // Send verification email — non-blocking; failure should not prevent registration
@@ -73,7 +73,7 @@ export const login = asyncHandler(async (req: Request, res: Response, next: Next
     return next(new ApiError(401, 'Invalid email or password'));
   }
 
-  const token = generateToken(user.id);
+  const token = generateToken(user.id, user.role, user.organizationId);
   const { password: _, ...userWithoutPassword } = user;
 
   res.status(200).json(new ApiResponse(200, { user: userWithoutPassword, token }, 'Login successful'));

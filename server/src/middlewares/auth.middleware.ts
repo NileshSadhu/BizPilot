@@ -27,8 +27,15 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret') as any;
 
+    // Support backward compatibility for older tokens that used `id` instead of `userId`
+    const userId = decoded.userId || decoded.id;
+
+    if (!userId) {
+      return next(new ApiError(401, 'Invalid token payload.'));
+    }
+
     const user = await prisma.user.findUnique({
-      where: { id: decoded.id }
+      where: { id: userId }
     });
 
     if (!user) {
@@ -39,5 +46,13 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
     next();
   } catch (error) {
     return next(new ApiError(401, 'Not authorized to access this route'));
+  }
+};
+
+export const restrictToPlatformAdmin = (req: Request, res: Response, next: NextFunction) => {
+  if (req.user && req.user.role === 'PLATFORM_ADMIN') {
+    next();
+  } else {
+    next(new ApiError(403, 'You do not have permission to perform this action. Platform Admin only.'));
   }
 };
