@@ -26,12 +26,13 @@ model Location {
 }
 
 model Resource {
-  id             String @id @default(uuid())
+  id             String  @id @default(uuid())
   organizationId String
   locationId     String
   activityTypeId String
   name           String
-  status         String
+  description    String?
+  isActive       Boolean @default(true)
 
   organization Organization @relation(fields: [organizationId], references: [id])
   location     Location     @relation(fields: [locationId], references: [id])
@@ -46,6 +47,9 @@ model Resource {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([locationId, name])
+  @@index([locationId])
+  @@index([activityTypeId])
   @@map("resources")
 }
 
